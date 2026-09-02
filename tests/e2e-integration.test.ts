@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { storage } from '../src/lib/db/storage';
+import { SEED_ACTIVITY } from '../src/lib/db/seed';
 import { dialogueEngine } from '../src/lib/ai/dialogue-engine';
 import { evaluationEngine } from '../src/lib/ai/evaluation-engine';
 import { generateSessionToken, hashSessionToken } from '../src/lib/auth/student-session';
@@ -7,7 +8,8 @@ import { generateSessionToken, hashSessionToken } from '../src/lib/auth/student-
 describe('End-to-End Educational Workflow (Student Journey & Teacher Inspection)', () => {
   it('should complete the entire student-teacher lifecycle seamlessly', async () => {
     // 1. Teacher Activity Verification
-    const activity = await storage.getActivityByCode('CLIM89');
+    await storage.updateActivityStatus(SEED_ACTIVITY.id, 'active');
+    const activity = await storage.getActivityByCode(SEED_ACTIVITY.access_code);
     expect(activity).not.toBeNull();
     expect(activity?.status).toBe('active');
     expect(activity?.title).toBe('هل يساهم النشاط البشري في زيادة الاحتباس الحراري؟');
@@ -131,7 +133,7 @@ describe('End-to-End Educational Workflow (Student Journey & Teacher Inspection)
     await storage.saveEvaluation(evaluation);
 
     expect(evaluation.session_id).toBe(session.id);
-    expect(evaluation.rubric_scores.length).toBe(4);
+    expect(evaluation.rubric_scores.length).toBe(activity!.rubric_config.length);
     expect(evaluation.strengths.length).toBeGreaterThan(0);
     expect(evaluation.teacher_approved).toBe(false);
 

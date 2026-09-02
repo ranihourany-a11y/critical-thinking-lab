@@ -211,7 +211,7 @@ export default function TeacherActivityDetailPage() {
 
         {/* Tab Contents */}
         {activeTab === 'participants' && (
-          <ParticipantTracker activityId={activityId} />
+          <ParticipantTracker activityId={activityId} activityStatus={activity.status} />
         )}
 
         {activeTab === 'sources' && (

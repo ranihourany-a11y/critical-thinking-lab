@@ -14,6 +14,14 @@ export const PedagogicalStageEnum = z.enum([
 export const DialogueDecisionSchema = z.object({
   reply: z.string().describe('النص المرئي الموجه للطالب باللغة العربية بأسلوب سقراطي رصين'),
   next_stage: PedagogicalStageEnum.describe('المرحلة البيداغوجية التالية المعتمدة'),
+  stage_objective_satisfied: z
+    .boolean()
+    .optional()
+    .describe('هل حقق الطالب الهدف التعليمي للمرحلة الحالية بنجاح'),
+  readiness_reasoning: z
+    .string()
+    .optional()
+    .describe('التعليل الداخلي لمدى جاهزية الطالب للانتقال للمرحلة التالية'),
   question_type: z.enum([
     'clarification',
     'evidence_request',
@@ -47,6 +55,7 @@ export const FormativeEvaluationSchema = z.object({
       stage: PedagogicalStageEnum,
       criterion_id: z.string(),
       relevance: z.string().describe('سبب دلالة هذا الاقتباس'),
+      message_id: z.string().optional().describe('معرف رسالة الطالب الأصلية'),
     })
   ),
   strengths: z.array(z.string()).min(1).describe('نقاط القوة الملحوظة في تفكير وحجج الطالب'),

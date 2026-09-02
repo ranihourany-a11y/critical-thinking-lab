@@ -67,9 +67,9 @@ describe('Session Security & Data Isolation', () => {
     expect(getGradeLabel(7)).toBe('الصف السابع');
     expect(getGradeLabel(8)).toBe('الصف الثامن');
     expect(getGradeLabel(9)).toBe('الصف التاسع');
-    expect(getGradeLabel(10)).toBe('أول ثانوي (العاشر)');
-    expect(getGradeLabel(11)).toBe('ثاني ثانوي (الحادي عشر)');
-    expect(getGradeLabel(12)).toBe('ثالث ثانوي (الثاني عشر)');
+    expect(getGradeLabel(10)).toBe('أول ثانوي');
+    expect(getGradeLabel(11)).toBe('ثاني ثانوي');
+    expect(getGradeLabel(12)).toBe('ثالث ثانوي');
 
     const baseActivityPayload = {
       title: 'نشاط التفكير في الذكاء الاصطناعي',

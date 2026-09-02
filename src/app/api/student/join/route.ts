@@ -3,6 +3,8 @@ import { StudentJoinSchema } from '@/lib/validation/session';
 import { storage } from '@/lib/db/storage';
 import { generateSessionToken, getStudentCookieOptions, hashSessionToken } from '@/lib/auth/student-session';
 
+const GENERIC_JOIN_ERROR = 'تعذر الانضمام. تحقق من رمز النشاط وحاول مجددًا.';
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -10,7 +12,7 @@ export async function POST(req: NextRequest) {
 
     if (!parsed.success) {
       return NextResponse.json(
-        { error: 'بيانات غير صالحة', details: parsed.error.flatten().fieldErrors },
+        { error: GENERIC_JOIN_ERROR, details: parsed.error.flatten().fieldErrors },
         { status: 400 }
       );
     }
@@ -18,17 +20,11 @@ export async function POST(req: NextRequest) {
     const { access_code, student_alias } = parsed.data;
 
     const activity = await storage.getActivityByCode(access_code);
-    if (!activity) {
+    if (!activity || activity.status !== 'active') {
+      // Return identical generic error for unknown, draft, or closed codes
       return NextResponse.json(
-        { error: 'رمز النشاط غير صحيح أو غير موجود' },
-        { status: 404 }
-      );
-    }
-
-    if (activity.status !== 'active') {
-      return NextResponse.json(
-        { error: 'هذا النشاط مغلق حالياً أو غير متاح للانضمام' },
-        { status: 403 }
+        { error: GENERIC_JOIN_ERROR },
+        { status: 400 }
       );
     }
 
@@ -36,21 +32,19 @@ export async function POST(req: NextRequest) {
     const rawToken = generateSessionToken();
     const tokenHash = hashSessionToken(rawToken);
 
-    // Create student session
+    // Create student session atomically
     const session = await storage.createSession(activity.id, student_alias, tokenHash);
+    if (!session || !session.id) {
+      return NextResponse.json(
+        { error: 'تعذر إنشاء الجلسة. يرجى المحاولة ثانية.' },
+        { status: 500 }
+      );
+    }
 
-    // Secure response with HttpOnly cookie containing rawToken
+    // Secure response: return ONLY sessionId, NO teacher_id, NO rubric, NO sources, NO evaluations, NO rawToken in body
     const response = NextResponse.json({
+      success: true,
       sessionId: session.id,
-      studentAlias: session.student_alias,
-      activity: {
-        id: activity.id,
-        title: activity.title,
-        topic: activity.topic,
-        gradeLevel: activity.grade_level,
-        language: activity.language,
-        maxTurns: activity.max_turns,
-      },
     });
 
     const cookieOptions = getStudentCookieOptions();
@@ -59,6 +53,9 @@ export async function POST(req: NextRequest) {
     return response;
   } catch (error) {
     console.error('Error joining student session:', error);
-    return NextResponse.json({ error: 'حدث خطأ في الخادم أثناء الانضمام' }, { status: 500 });
+    return NextResponse.json(
+      { error: GENERIC_JOIN_ERROR },
+      { status: 500 }
+    );
   }
 }

@@ -9,19 +9,35 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
 }
 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, label, error, helperText, id, ...props }, ref) => {
+  ({ className, label, error, helperText, id, required, ...props }, ref) => {
     const inputId = id || (label ? label.replace(/\s+/g, '-').toLowerCase() : undefined);
+    const errorId = inputId ? `${inputId}-error` : undefined;
+    const helperId = inputId ? `${inputId}-helper` : undefined;
+
+    const describedBy = error
+      ? errorId
+      : helperText
+      ? helperId
+      : undefined;
 
     return (
       <div className="w-full space-y-1.5">
         {label && (
           <label htmlFor={inputId} className="block text-sm font-semibold text-brand-navy">
             {label}
+            {required && (
+              <span className="text-red-500 mr-1" aria-hidden="true">
+                *
+              </span>
+            )}
           </label>
         )}
         <input
           id={inputId}
           ref={ref}
+          required={required}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={props['aria-describedby'] || describedBy}
           className={twMerge(
             clsx(
               'w-full px-4 py-2.5 rounded-xl border bg-white text-brand-navy placeholder:text-brand-slate-400 text-base transition-all duration-200 min-h-[44px]',
@@ -33,8 +49,16 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           )}
           {...props}
         />
-        {error && <p className="text-sm font-medium text-red-600">{error}</p>}
-        {helperText && !error && <p className="text-xs text-brand-slate-500">{helperText}</p>}
+        {error && (
+          <p id={errorId} className="text-sm font-medium text-red-600">
+            {error}
+          </p>
+        )}
+        {helperText && !error && (
+          <p id={helperId} className="text-xs text-brand-slate-500">
+            {helperText}
+          </p>
+        )}
       </div>
     );
   }

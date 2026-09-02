@@ -13,12 +13,14 @@ export interface ReflectionFormProps {
   sessionId: string;
   initialStance?: string | null;
   initialConfidence?: number | null;
+  alreadySubmitted?: boolean;
 }
 
 export function ReflectionForm({
   sessionId,
   initialStance,
   initialConfidence,
+  alreadySubmitted = false,
 }: ReflectionFormProps) {
   const router = useRouter();
 
@@ -30,6 +32,7 @@ export function ReflectionForm({
   const [finalReflection, setFinalReflection] = useState('');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(alreadySubmitted);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -88,6 +91,7 @@ export function ReflectionForm({
       }
 
       toast.success('تم إرسال الحوار إلى الأستاذ بنجاح!');
+      setIsSubmitted(true);
       router.push(`/student/${sessionId}/submitted`);
     } catch (err) {
       console.error('Submission error:', err);
@@ -97,6 +101,24 @@ export function ReflectionForm({
       setIsSubmitting(false);
     }
   };
+
+  if (isSubmitted) {
+    return (
+      <Card variant="bordered" className="max-w-2xl mx-auto text-center p-8 bg-white shadow-lg space-y-6" dir="rtl">
+        <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto text-3xl shadow-inner border border-emerald-200">
+          ✓
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-2xl font-black text-brand-navy">
+            تم إرسال الحوار إلى الأستاذ
+          </h2>
+          <p className="text-sm text-brand-slate-600 leading-relaxed">
+            تم حفظ تأملك النهائي وسجل الحوار بنجاح، وتم قفل الجلسة ضد أي تعديلات إضافية.
+          </p>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <Card variant="bordered" className="max-w-3xl mx-auto shadow-md bg-white">

@@ -6,12 +6,21 @@ import { dialogueEngine } from '@/lib/ai/dialogue-engine';
 
 export async function POST(req: NextRequest) {
   try {
+    // 1. Authenticate student via opaque session token hash
     const studentCtx = await getAuthenticatedStudent(req);
     if (!studentCtx) {
       return NextResponse.json({ error: 'غير مصرح - رمز الجلسة غير صالح' }, { status: 401 });
     }
 
     const { session, activity } = studentCtx;
+
+    // 2. Validate active activity and non-completed session
+    if (activity.status !== 'active') {
+      return NextResponse.json(
+        { error: 'هذا النشاط غير متاح حالياً أو تم إغلاقه بواسطة المعلم' },
+        { status: 403 }
+      );
+    }
 
     if (session.status !== 'active') {
       return NextResponse.json(
@@ -20,6 +29,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // 3. Validate student input (trimmed 1 to 2,000 characters)
     const body = await req.json();
     const parsed = StudentChatTurnSchema.safeParse(body);
 
@@ -33,9 +43,12 @@ export async function POST(req: NextRequest) {
     const { client_message_id, content, message_kind } = parsed.data;
 
     const existingMessages = await storage.getMessages(session.id);
-    const studentTurnsCount = existingMessages.filter((m) => m.sender === 'student').length;
+    const studentMessages = existingMessages.filter((m) => m.sender === 'student');
+    const studentTurnsCount = studentMessages.length;
 
-    if (studentTurnsCount >= activity.max_turns) {
+    // 4. Cap at maximum 60 student turns per session
+    const maxAllowedTurns = Math.min(activity.max_turns || 60, 60);
+    if (studentTurnsCount >= maxAllowedTurns) {
       return NextResponse.json(
         {
           error: 'تم الوصول إلى الحد الأقصى من جولات الحوار لهذا النشاط. يرجى الانتقال إلى نموذج التأمل الختامي.',
@@ -45,10 +58,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 1. Idempotency check: has this client_message_id already been processed?
+    // 5. Idempotency Check: if client_message_id already exists, return replayed response
     const alreadySaved = existingMessages.find((m) => m.client_message_id === client_message_id);
     if (alreadySaved) {
-      // Find if there is an expert message after it
       const nextExpertMsg = existingMessages.find(
         (m) => m.sender === 'expert' && m.sequence_number === alreadySaved.sequence_number + 1
       );
@@ -63,33 +75,93 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 2. Pre-save student message
-    const studentSeq = existingMessages.length + 1;
-    const studentMessage = await storage.saveMessage(session.id, {
-      client_message_id,
-      sequence_number: studentSeq,
-      sender: 'student',
-      content,
-      stage: session.current_stage,
-      message_kind,
-      status: 'completed',
-    });
+    // 6. Cooldown Check: At least 1.5s (1500ms) since previous accepted student message
+    if (!alreadySaved && studentMessages.length > 0) {
+      const latestStudentMsg = [...studentMessages].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )[0];
 
+      if (latestStudentMsg) {
+        const lastTime = new Date(latestStudentMsg.created_at).getTime();
+        const now = Date.now();
+        const elapsed = now - lastTime;
+
+        if (elapsed < 1500) {
+          const retryAfterSeconds = Math.max(1, Math.ceil((1500 - elapsed) / 1000));
+          return NextResponse.json(
+            {
+              error: 'RATE_LIMIT_COOLDOWN',
+              message: 'يرجى التمهل قليلاً قبل إرسال الرسالة التالية (فترة انتظار قصيرة).',
+            },
+            {
+              status: 429,
+              headers: {
+                'Retry-After': String(retryAfterSeconds),
+              },
+            }
+          );
+        }
+      }
+    }
+
+    // 7. Insert the student message and await successful persistence
+    let studentMessage;
+    if (alreadySaved) {
+      studentMessage = alreadySaved;
+    } else {
+      try {
+        const studentSeq = existingMessages.length + 1;
+        studentMessage = await storage.saveMessage(session.id, {
+          client_message_id,
+          sequence_number: studentSeq,
+          sender: 'student',
+          content,
+          stage: session.current_stage,
+          message_kind,
+          status: 'completed',
+        });
+      } catch (dbError) {
+        console.error('Failed to persist student message before AI call:', dbError);
+        return NextResponse.json(
+          {
+            error: 'FAILED_TO_SAVE_STUDENT_MESSAGE',
+            retryable: true,
+            message: 'تعذر حفظ رسالتك في سجل الحوار. يرجى المحاولة مرة أخرى.',
+          },
+          { status: 500 }
+        );
+      }
+    }
+
+    // 8. Only after student insert succeeds, invoke the dialogue AI provider
     const sources = await storage.getSources(activity.id);
-
-    // 3. Invoke Socratic Dialogue Engine
+    let decision;
     try {
-      const decision = await dialogueEngine.processTurn({
+      decision = await dialogueEngine.processTurn({
         activity,
         sources,
-        session,
+        session: session.current_stage === 'baseline' ? { ...session, current_stage: 'understanding' } : session,
         history: existingMessages,
         studentMessage: content,
         messageKind: message_kind,
       });
+    } catch (aiError) {
+      console.error('AI provider generation failed during chat turn:', aiError);
+      return NextResponse.json(
+        {
+          error: 'AI_PROVIDER_TEMPORARY_ERROR',
+          recoverable: true,
+          message: 'تم حفظ رسالتك بنجاح في سجل الحوار، ولكن تعذر وصول رد المرشد مؤقتاً. يمكنك إعادة المحاولة بأمان.',
+          studentMessageSaved: true,
+          clientMessageId: client_message_id,
+        },
+        { status: 503 }
+      );
+    }
 
-      // 4. Save Expert Response
-      const expertSeq = studentSeq + 1;
+    // 9. Persist the completed expert response
+    try {
+      const expertSeq = studentMessage.sequence_number + 1;
       const expertMessage = await storage.saveMessage(session.id, {
         client_message_id: `expert-${client_message_id}`,
         sequence_number: expertSeq,
@@ -100,7 +172,6 @@ export async function POST(req: NextRequest) {
         status: 'completed',
       });
 
-      // 5. Update session stage and hint count
       const isHint = message_kind === 'hint';
       await storage.updateSessionStage(session.id, decision.next_stage, isHint);
 
@@ -112,18 +183,17 @@ export async function POST(req: NextRequest) {
         studentMessageSaved: true,
         expertMessageId: expertMessage.id,
       });
-    } catch (aiError) {
-      console.error('AI provider generation failed during chat turn:', aiError);
-      // Student message is safely stored. Return recoverable state.
+    } catch (expertDbError) {
+      console.error('Failed to persist expert response:', expertDbError);
       return NextResponse.json(
         {
-          error: 'AI_PROVIDER_TEMPORARY_ERROR',
+          error: 'FAILED_TO_SAVE_EXPERT_MESSAGE',
           recoverable: true,
-          message: 'تم حفظ رسالتك بنجاح في سجل الحوار، ولكن تعذر وصول رد المرشد مؤقتاً. يمكنك إعادة المحاولة بأمان.',
+          message: 'تم توليد الرد ولكن تعذر حفظه في السجل. يرجى إعادة المحاولة.',
           studentMessageSaved: true,
           clientMessageId: client_message_id,
         },
-        { status: 503 }
+        { status: 500 }
       );
     }
   } catch (error) {

@@ -1,7 +1,17 @@
 import React from 'react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Header } from '@/components/shared/Header';
 import { JoinCard } from '@/components/student/JoinCard';
+
+export const metadata: Metadata = {
+  title: 'مختبر التفكير الناقد | منصة الحوار السقراطي للتعليم المتوسط',
+  description:
+    'تطبيق تعليمي تفاعلي باللغة العربية لتعزيز مهارات التفكير الناقد وحل المشكلات عبر الحوار السقراطي الموجه بالأدلة والمصادر.',
+  alternates: {
+    canonical: '/',
+  },
+};
 
 export default function LobbyPage() {
   return (

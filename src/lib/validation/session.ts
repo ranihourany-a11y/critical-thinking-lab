@@ -3,14 +3,20 @@ import { z } from 'zod';
 export const StudentJoinSchema = z.object({
   access_code: z
     .string()
-    .min(3, 'رمز النشاط مطلوب')
-    .max(20)
-    .transform((val) => val.trim().toUpperCase()),
+    .min(1, 'رمز النشاط مطلوب')
+    .transform((val) => val.trim().toUpperCase())
+    .refine((val) => val.length >= 3 && val.length <= 20, {
+      message: 'رمز النشاط يجب أن يكون بين 3 و 20 حرفاً',
+    }),
   student_alias: z
     .string()
-    .min(2, 'الاسم المستعار يجب ألا يقل عن حرفين')
-    .max(50, 'الاسم المستعار طويل جداً')
-    .trim(),
+    .transform((val) => val.replace(/\s+/g, ' ').trim())
+    .refine((val) => !/[\u0000-\u001F\u007F-\u009F]/.test(val), {
+      message: 'الاسم المستعار يحتوي على رموز تحكم غير مسموحة',
+    })
+    .refine((val) => val.length >= 2 && val.length <= 40, {
+      message: 'الاسم المستعار يجب أن يكون بين 2 و 40 حرفاً',
+    }),
 });
 
 export const StudentPrepareSchema = z.object({
@@ -24,8 +30,9 @@ export const StudentChatTurnSchema = z.object({
   client_message_id: z.string().min(1, 'معرف الرسالة مطلوب (idempotency key)'),
   content: z
     .string()
+    .trim()
     .min(1, 'نص الرسالة لا يمكن أن يكون فارغاً')
-    .max(1000, 'تجاوزت الحد الأقصى لطول الرسالة (1000 حرف)'),
+    .max(2000, 'تجاوزت الحد الأقصى لطول الرسالة (2000 حرف)'),
   message_kind: z.enum(['normal', 'clarification', 'question', 'hint']).default('normal'),
 });
 

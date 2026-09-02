@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Header } from '@/components/shared/Header';
 import { Card, CardHeader } from '@/components/shared/Card';
 import { Input } from '@/components/shared/Input';
@@ -19,6 +20,7 @@ export default function StudentPreparePage() {
 
   const [sessionData, setSessionData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isInvalidSession, setIsInvalidSession] = useState(false);
 
   const [initialStance, setInitialStance] = useState('');
   const [initialReason, setInitialReason] = useState('');
@@ -27,32 +29,39 @@ export default function StudentPreparePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function loadSession() {
-      try {
-        const res = await fetch('/api/student/session');
-        if (!res.ok) {
-          toast.error('الجلسة غير صالحة أو انتهت صلاحيتها');
-          router.push('/');
-          return;
-        }
-        const data = await res.json();
-        setSessionData(data);
-        if (data.session.initial_stance) {
-          setInitialStance(data.session.initial_stance);
-        }
-        if (data.session.initial_confidence) {
-          setInitialConfidence(data.session.initial_confidence);
-        }
-      } catch (err) {
-        console.error('Error fetching session:', err);
-        toast.error('تعذر جلب بيانات الجلسة');
-      } finally {
-        setIsLoading(false);
+  const loadSession = useCallback(async () => {
+    setIsLoading(true);
+    setIsInvalidSession(false);
+    try {
+      const res = await fetch('/api/student/session');
+      if (!res.ok) {
+        setIsInvalidSession(true);
+        return;
       }
+      const data = await res.json();
+      if (!data?.session || !data?.activity || data.session.status === 'closed' || data.session.status === 'expired' || data.activity.status === 'closed') {
+        setIsInvalidSession(true);
+        return;
+      }
+
+      setSessionData(data);
+      if (data.session.initial_stance) {
+        setInitialStance(data.session.initial_stance);
+      }
+      if (data.session.initial_confidence) {
+        setInitialConfidence(data.session.initial_confidence);
+      }
+    } catch (err) {
+      console.error('Error fetching session:', err);
+      setIsInvalidSession(true);
+    } finally {
+      setIsLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
     loadSession();
-  }, [router]);
+  }, [loadSession]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,6 +122,48 @@ export default function StudentPreparePage() {
           <div className="w-8 h-8 border-4 border-brand-teal border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-sm font-bold text-brand-navy">جاري تجهيز مختبر التفكير الناقد...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (isInvalidSession) {
+    return (
+      <div className="min-h-screen flex flex-col bg-brand-slate-50">
+        <Header role="public" title="مختبر التفكير الناقد" subtitle="بوابة الطلاب" />
+        <main className="flex-1 flex items-center justify-center p-4 sm:p-6">
+          <Card variant="bordered" className="max-w-md w-full text-center shadow-lg bg-white p-6 sm:p-8 space-y-5">
+            <div className="w-16 h-16 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center text-3xl mx-auto border border-red-100">
+              ⚠️
+            </div>
+
+            <div className="space-y-2">
+              <h1 className="text-xl font-bold text-brand-navy">تعذّر فتح جلسة الحوار</h1>
+              <p className="text-sm text-brand-slate-600 leading-relaxed">
+                قد يكون الرابط غير صالح أو أن الجلسة انتهت. اطلب من معلمك رمز نشاط صالحًا ثم حاول مجددًا.
+              </p>
+            </div>
+
+            <div className="pt-2 flex flex-col gap-2.5">
+              <Link
+                href="/"
+                className="w-full inline-flex items-center justify-center font-bold text-base bg-brand-teal text-white hover:bg-brand-teal-700 rounded-xl py-2.5 px-4 transition-colors min-h-[44px] shadow-sm"
+              >
+                العودة إلى صفحة الانضمام
+              </Link>
+              <Button
+                type="button"
+                variant="outline"
+                size="md"
+                onClick={() => {
+                  loadSession();
+                }}
+                className="w-full font-bold"
+              >
+                إعادة المحاولة
+              </Button>
+            </div>
+          </Card>
+        </main>
       </div>
     );
   }

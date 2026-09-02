@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedTeacher } from '@/lib/auth/teacher-auth';
 import { storage } from '@/lib/db/storage';
-import { CreateActivitySchema } from '@/lib/validation/activity';
+import { CreateActivitySchema, validateActivityActivation } from '@/lib/validation/activity';
 
 export async function GET(req: NextRequest) {
   try {
@@ -33,6 +33,21 @@ export async function POST(req: NextRequest) {
         { error: 'بيانات النشاط غير صالحة', details: parsed.error.flatten().fieldErrors },
         { status: 400 }
       );
+    }
+
+    // Activation readiness check for active status
+    if (parsed.data.status === 'active') {
+      const activationCheck = validateActivityActivation(parsed.data, parsed.data.sources);
+      if (!activationCheck.valid) {
+        return NextResponse.json(
+          {
+            error: 'ACTIVATION_VALIDATION_FAILED',
+            message: 'لا يمكن تنشيط النشاط قبل استيفاء جميع شروط الجاهزية والتفعيل.',
+            details: activationCheck.errors,
+          },
+          { status: 400 }
+        );
+      }
     }
 
     const newActivity = await storage.createActivity(teacher.id, parsed.data);

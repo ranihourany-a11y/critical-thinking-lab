@@ -1,0 +1,57 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { getSafeTeacherRedirect } from '@/lib/auth/teacher-auth';
+import { storage } from '@/lib/db/storage';
+
+export async function GET(request: NextRequest) {
+  const { searchParams, origin } = new URL(request.url);
+  const code = searchParams.get('code');
+  const nextParam = searchParams.get('next');
+  const safeNext = getSafeTeacherRedirect(nextParam);
+
+  if (code) {
+    const response = NextResponse.redirect(new URL(safeNext, origin));
+
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder-project.supabase.co',
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key',
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              response.cookies.set(name, value, options);
+            });
+          },
+        },
+      }
+    );
+
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+
+    if (!error) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (user?.email) {
+        const authorized =
+          (await storage.getTeacher(user.id)) ||
+          (await storage.getTeacherByEmail(user.email));
+
+        if (authorized) {
+          return response;
+        }
+      }
+
+      // Authenticated non-teacher or unauthorized email
+      await supabase.auth.signOut();
+      return NextResponse.redirect(new URL('/teacher/login?error=unauthorized', origin));
+    }
+  }
+
+  // Code missing or exchange failed
+  return NextResponse.redirect(new URL('/teacher/login?error=invalid_token', origin));
+}

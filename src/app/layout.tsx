@@ -2,8 +2,17 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Providers } from './providers';
 
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  process.env.NEXT_PUBLIC_APP_URL ||
+  'https://critical-thinking-lab.vercel.app';
+
 export const metadata: Metadata = {
-  title: 'مختبر التفكير الناقد | منصة الحوار السقراطي للتعليم المتوسط',
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: 'مختبر التفكير الناقد | منصة الحوار السقراطي للتعليم المتوسط',
+    template: '%s | مختبر التفكير الناقد',
+  },
   description:
     'تطبيق تعليمي تفاعلي باللغة العربية لتعزيز مهارات التفكير الناقد وحل المشكلات عبر الحوار السقراطي الموجه بالأدلة والمصادر.',
 };

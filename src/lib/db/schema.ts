@@ -4,9 +4,9 @@ export const GRADE_LEVEL_OPTIONS = [
   { value: 7, label: 'الصف السابع' },
   { value: 8, label: 'الصف الثامن' },
   { value: 9, label: 'الصف التاسع' },
-  { value: 10, label: 'أول ثانوي (العاشر)' },
-  { value: 11, label: 'ثاني ثانوي (الحادي عشر)' },
-  { value: 12, label: 'ثالث ثانوي (الثاني عشر)' },
+  { value: 10, label: 'أول ثانوي' },
+  { value: 11, label: 'ثاني ثانوي' },
+  { value: 12, label: 'ثالث ثانوي' },
 ] as const;
 
 export function getGradeLabel(grade: number): string {
@@ -54,6 +54,12 @@ export interface Teacher {
   created_at: string;
   updated_at: string;
 }
+
+export const DEV_DEFAULT_TEACHER = {
+  id: '00000000-0000-0000-0000-000000000001',
+  email: 'teacher@ctl.school.edu',
+  role: 'teacher' as const,
+};
 
 export interface ActivitySource {
   id: string;
@@ -125,6 +131,7 @@ export interface VerifiedQuote {
   stage: PedagogicalStage;
   criterion_id: string;
   relevance: string;
+  message_id?: string;
 }
 
 export interface EvaluationRubricScore {

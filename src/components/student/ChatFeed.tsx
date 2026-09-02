@@ -9,16 +9,25 @@ import { clsx } from 'clsx';
 export interface ChatFeedProps {
   messages: Message[];
   isLoading: boolean;
+  isRetrying?: boolean;
   onRetry?: (clientMessageId: string) => void;
   failedClientMsgId?: string | null;
 }
 
-export function ChatFeed({ messages, isLoading, onRetry, failedClientMsgId }: ChatFeedProps) {
+export function ChatFeed({
+  messages,
+  isLoading,
+  isRetrying = false,
+  onRetry,
+  failedClientMsgId,
+}: ChatFeedProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isLoading]);
+    if (typeof bottomRef.current?.scrollIntoView === 'function') {
+      bottomRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, isLoading, isRetrying]);
 
   return (
     <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 bg-brand-slate-50 min-h-[350px]">
@@ -46,7 +55,7 @@ export function ChatFeed({ messages, isLoading, onRetry, failedClientMsgId }: Ch
           >
             <div className="flex items-center gap-2 mb-1 px-1">
               <span className="text-xs font-bold text-brand-slate-600">
-                {isStudent ? 'أنت (الطالب)' : 'المرشد السقراطي 🏛️'}
+                {isStudent ? 'أنت (الطالب)' : 'الخبير السقراطي 🏛️'}
               </span>
               {msg.message_kind === 'hint' && (
                 <Badge variant="amber" size="sm">
@@ -83,21 +92,29 @@ export function ChatFeed({ messages, isLoading, onRetry, failedClientMsgId }: Ch
                   })}
                 </span>
                 {isStudent && (
-                  <span className="text-emerald-300 font-semibold">✓ محفوظ في السجل</span>
+                  <span className="text-emerald-300 font-semibold">✓ تم حفظ إجابتك</span>
                 )}
               </div>
             </div>
 
             {isFailed && onRetry && (
-              <div className="mt-2 p-2.5 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3 text-xs font-medium text-amber-800">
-                <span>⚠️ رسالتك محفوظة بأمان. تعذر وصول رد المرشد.</span>
+              <div
+                className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-xl flex flex-wrap items-center justify-between gap-3 text-xs font-medium text-amber-900 shadow-xs"
+                role="alert"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-emerald-700 font-bold">✓ تم حفظ إجابتك.</span>
+                  <span className="text-amber-800">تعذر وصول رد الخبير.</span>
+                </div>
                 <Button
                   size="sm"
                   variant="amber"
                   onClick={() => onRetry(msg.client_message_id)}
-                  className="text-xs py-1 px-3 min-h-[36px]"
+                  isLoading={isRetrying}
+                  disabled={isRetrying || isLoading}
+                  className="text-xs py-1 px-3 min-h-[36px] font-bold"
                 >
-                  إعادة المحاولة 🔄
+                  إعادة محاولة الرد 🔄
                 </Button>
               </div>
             )}
