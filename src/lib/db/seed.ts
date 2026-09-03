@@ -1,4 +1,7 @@
-import { Activity, ActivitySource, DEV_DEFAULT_TEACHER, PedagogicalStage, RubricCriterion } from './schema';
+import 'server-only';
+
+import { Activity, ActivitySource, PedagogicalStage, RubricCriterion } from './schema';
+import { DEV_DEFAULT_TEACHER } from '@/lib/auth/teacher-fixture';
 
 export const CLIMATE_FIVE_STAGES: PedagogicalStage[] = [
   'understanding',

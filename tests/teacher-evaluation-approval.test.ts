@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { storage, dbStore } from '../src/lib/db/storage';
 import { SEED_ACTIVITY } from '../src/lib/db/seed';
-import { DEV_DEFAULT_TEACHER } from '../src/lib/db/schema';
+import { DEV_DEFAULT_TEACHER } from '../src/lib/auth/teacher-auth';
 import { generateSessionToken, hashSessionToken, STUDENT_SESSION_COOKIE } from '../src/lib/auth/student-session';
 import { PATCH as teacherSessionPatchHandler } from '../src/app/api/teacher/sessions/[id]/route';
 import { POST as studentChatHandler } from '../src/app/api/student/chat/route';

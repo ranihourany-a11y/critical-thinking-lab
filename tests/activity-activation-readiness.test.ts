@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { storage, dbStore } from '../src/lib/db/storage';
-import { DEV_DEFAULT_TEACHER } from '../src/lib/db/schema';
+import { DEV_DEFAULT_TEACHER } from '../src/lib/auth/teacher-auth';
 import { POST as createActivityHandler } from '../src/app/api/teacher/activities/route';
 import { PATCH as updateActivityPatchHandler } from '../src/app/api/teacher/activities/[id]/route';
 import { validateActivityActivation } from '../src/lib/validation/activity';

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { storage } from '../src/lib/db/storage';
 import { SEED_ACTIVITY } from '../src/lib/db/seed';
-import { DEV_DEFAULT_TEACHER } from '../src/lib/db/schema';
+import { DEV_DEFAULT_TEACHER } from '../src/lib/auth/teacher-auth';
 import { generateSessionToken, hashSessionToken } from '../src/lib/auth/student-session';
 import { GET as teacherSessionGetHandler } from '../src/app/api/teacher/sessions/[id]/route';
 import { evaluationEngine } from '../src/lib/ai/evaluation-engine';

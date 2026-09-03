@@ -1,3 +1,5 @@
+import 'server-only';
+
 import {
   Activity,
   ActivitySource,
@@ -8,8 +10,8 @@ import {
   PedagogicalStage,
   Session,
   Teacher,
-  DEV_DEFAULT_TEACHER,
 } from './schema';
+import { DEV_DEFAULT_TEACHER } from '@/lib/auth/teacher-fixture';
 import { CLIMATE_CHANGE_SOURCES, SEED_ACTIVITY } from './seed';
 import { CreateActivityInput } from '../validation/activity';
 

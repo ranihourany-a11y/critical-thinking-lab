@@ -6,7 +6,8 @@ import { NextRequest } from 'next/server';
 import { GET as getActivityHandler } from '../src/app/api/teacher/activities/[id]/route';
 import { ParticipantTracker } from '../src/components/teacher/ParticipantTracker';
 import { storage, dbStore } from '../src/lib/db/storage';
-import { DEV_DEFAULT_TEACHER, Activity, Session } from '../src/lib/db/schema';
+import { Activity, Session } from '../src/lib/db/schema';
+import { DEV_DEFAULT_TEACHER } from '../src/lib/auth/teacher-auth';
 import { SEED_ACTIVITY } from '../src/lib/db/seed';
 
 describe('Teacher Activity Participant Tracker & Authorization', () => {

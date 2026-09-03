@@ -6,8 +6,8 @@ import { Header } from '@/components/shared/Header';
 import { Card, CardHeader } from '@/components/shared/Card';
 import { Input } from '@/components/shared/Input';
 import { Button } from '@/components/shared/Button';
-import { createClient } from '@/lib/supabase/client';
-import { getSafeTeacherRedirect } from '@/lib/auth/teacher-auth';
+import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
+import { getSafeTeacherRedirect } from '@/lib/auth/teacher-redirect';
 
 function TeacherLoginForm() {
   const searchParams = useSearchParams();
@@ -18,31 +18,67 @@ function TeacherLoginForm() {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const isConfigured = isSupabaseConfigured();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) return;
 
+    setErrorMessage(null);
+
+    if (!isSupabaseConfigured()) {
+      setErrorMessage('الخدمة غير متوفرة حالياً. يرجى المحاولة لاحقاً.');
+      return;
+    }
+
+    const supabase = createClient();
+    if (!supabase) {
+      setErrorMessage('الخدمة غير متوفرة حالياً. يرجى المحاولة لاحقاً.');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      const supabase = createClient();
       const redirectUrl = new URL('/auth/callback', window.location.origin);
       redirectUrl.searchParams.set('next', safeNext);
 
-      await supabase.auth.signInWithOtp({
+      const { error } = await supabase.auth.signInWithOtp({
         email: email.trim().toLowerCase(),
         options: {
           shouldCreateUser: false,
           emailRedirectTo: redirectUrl.toString(),
         },
       });
+
+      if (error) {
+        // Distinguish operational failures from account-not-found / signup-disallowed
+        const isUserNotFound =
+          error.status === 400 &&
+          (error.message?.toLowerCase().includes('signups not allowed') ||
+            error.message?.toLowerCase().includes('user not found') ||
+            error.code === 'otp_disabled' ||
+            error.code === 'signup_disabled');
+
+        if (isUserNotFound) {
+          // Account anti-enumeration: show standard generic confirmation
+          setSubmitted(true);
+        } else {
+          // Operational provider / network error: do NOT claim email was sent
+          setErrorMessage('تعذر الاتصال بالخدمة حالياً. يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى.');
+        }
+      } else {
+        // Standard non-enumerating confirmation
+        setSubmitted(true);
+      }
     } catch (err) {
       console.error('Magic link sign-in error:', err);
+      // Operational failure: do not claim email was sent and never reveal authorization
+      setErrorMessage('تعذر الاتصال بالخدمة حالياً. يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى.');
     } finally {
       setIsLoading(false);
-      // Always display the exact same confirmation response to prevent email enumeration
-      setSubmitted(true);
     }
   };
 
@@ -65,7 +101,34 @@ function TeacherLoginForm() {
         </div>
       )}
 
-      {submitted ? (
+      {errorParam === 'service_unavailable' && (
+        <div className="p-3 mb-4 bg-red-50 border border-red-200 rounded-xl text-xs font-semibold text-red-700">
+          ⚠️ الخدمة غير متوفرة حالياً. يرجى المحاولة لاحقاً.
+        </div>
+      )}
+
+      {errorMessage && (
+        <div
+          role="alert"
+          className="p-3 mb-4 bg-red-50 border border-red-200 rounded-xl text-xs font-semibold text-red-700 leading-relaxed"
+        >
+          ⚠️ {errorMessage}
+        </div>
+      )}
+
+      {!isConfigured ? (
+        <div className="space-y-4 text-center py-4">
+          <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center text-3xl mx-auto border border-amber-200">
+            ⚠️
+          </div>
+          <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm font-bold text-amber-900 leading-relaxed">
+            الخدمة غير متوفرة حالياً. يرجى المحاولة لاحقاً.
+          </div>
+          <p className="text-xs text-brand-slate-500">
+            خدمة التحقق وتسجيل الدخول غير مهيأة أو معطلة مؤقتاً للصيانة.
+          </p>
+        </div>
+      ) : submitted ? (
         <div className="space-y-4 text-center py-4">
           <div className="w-14 h-14 bg-brand-teal-50 text-brand-teal rounded-2xl flex items-center justify-center text-3xl mx-auto border border-brand-teal-200">
             📩
@@ -83,6 +146,7 @@ function TeacherLoginForm() {
             onClick={() => {
               setSubmitted(false);
               setEmail('');
+              setErrorMessage(null);
             }}
             className="font-bold text-xs"
           >
@@ -98,7 +162,10 @@ function TeacherLoginForm() {
             type="email"
             placeholder="name@school.edu"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              if (errorMessage) setErrorMessage(null);
+            }}
             autoComplete="email"
             required
             autoFocus

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { FormativeEvaluationEngine } from '../src/lib/ai/evaluation-engine';
 import { storage } from '../src/lib/db/storage';
 import { SEED_ACTIVITY } from '../src/lib/db/seed';
-import { DEV_DEFAULT_TEACHER } from '../src/lib/db/schema';
+import { DEV_DEFAULT_TEACHER } from '../src/lib/auth/teacher-auth';
 import { generateSessionToken, hashSessionToken, STUDENT_SESSION_COOKIE } from '../src/lib/auth/student-session';
 import { GET as teacherSessionGetHandler, POST as teacherSessionPostHandler } from '../src/app/api/teacher/sessions/[id]/route';
 import { POST as studentSubmitHandler } from '../src/app/api/student/submit/route';

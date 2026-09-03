@@ -6,7 +6,7 @@ import {
   CLIMATE_FIVE_STAGES,
   seedDefaultClimateActivity,
 } from '../src/lib/db/seed';
-import { DEV_DEFAULT_TEACHER } from '../src/lib/db/schema';
+import { DEV_DEFAULT_TEACHER } from '../src/lib/auth/teacher-auth';
 
 describe('Default Climate Critical-Thinking Activity Seed & Template', () => {
   it('1. Verifies exact activity configuration: title, Grade 8, draft status, strict grounding, advocate stance, code CLIMATE-27, and 5 stages', () => {

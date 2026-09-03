@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
-import { getSafeTeacherRedirect } from '@/lib/auth/teacher-auth';
+import { getSafeTeacherRedirect } from '@/lib/auth/teacher-redirect';
 import { storage } from '@/lib/db/storage';
 
 export async function GET(request: NextRequest) {
@@ -9,12 +9,19 @@ export async function GET(request: NextRequest) {
   const nextParam = searchParams.get('next');
   const safeNext = getSafeTeacherRedirect(nextParam);
 
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return NextResponse.redirect(new URL('/teacher/login?error=service_unavailable', origin));
+  }
+
   if (code) {
     const response = NextResponse.redirect(new URL(safeNext, origin));
 
     const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder-project.supabase.co',
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key',
+      supabaseUrl,
+      supabaseAnonKey,
       {
         cookies: {
           getAll() {

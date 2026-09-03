@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { storage, dbStore } from '../src/lib/db/storage';
-import { DEV_DEFAULT_TEACHER } from '../src/lib/db/schema';
+import { DEV_DEFAULT_TEACHER } from '../src/lib/auth/teacher-auth';
 import { CLIMATE_CHANGE_RUBRIC } from '../src/lib/db/seed';
 import { POST as teacherActivitiesPostHandler } from '../src/app/api/teacher/activities/route';
 import {

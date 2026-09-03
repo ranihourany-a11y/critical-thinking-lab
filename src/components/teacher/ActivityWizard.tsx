@@ -7,8 +7,7 @@ import { Input } from '../shared/Input';
 import { Textarea } from '../shared/Textarea';
 import { Button } from '../shared/Button';
 import { Badge } from '../shared/Badge';
-import { CLIMATE_CHANGE_RUBRIC } from '@/lib/db/seed';
-import { GradeLevel, GRADE_LEVEL_OPTIONS, getGradeLabel, RubricCriterion } from '@/lib/db/schema';
+import { GradeLevel, GRADE_LEVEL_OPTIONS, getGradeLabel, RubricCriterion, DEFAULT_RUBRIC_CONFIG } from '@/lib/db/schema';
 import { toast } from 'sonner';
 
 export function ActivityWizard() {
@@ -44,7 +43,7 @@ export function ActivityWizard() {
   const [maxTurns, setMaxTurns] = useState(8);
 
   // 5. Rubric Configuration
-  const [rubricConfig, setRubricConfig] = useState<RubricCriterion[]>(CLIMATE_CHANGE_RUBRIC);
+  const [rubricConfig, setRubricConfig] = useState<RubricCriterion[]>(DEFAULT_RUBRIC_CONFIG);
 
   const totalRubricWeight = rubricConfig.reduce((acc, curr) => acc + (Number(curr.weight) || 0), 0);
 
@@ -309,7 +308,7 @@ export function ActivityWizard() {
             <Input
               id="activity-title"
               label="عنوان النشاط (السؤال المحوري):"
-              placeholder="مثال: هل يساهم النشاط البشري في زيادة الاحتباس الحراري؟"
+              placeholder="مثال: هل الذكاء الاصطناعي بديل موثوق للبحث العلمي الميداني؟"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               error={errors.title}
@@ -318,7 +317,7 @@ export function ActivityWizard() {
             <Input
               id="activity-topic"
               label="موضوع القضية وسياقها:"
-              placeholder="مثال: التغير المناخي والأنشطة البشرية مقابل العوامل الطبيعية"
+              placeholder="مثال: موثوقية النماذج اللغوية في استخلاص الحقائق العلمية"
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
               error={errors.topic}
@@ -409,7 +408,7 @@ export function ActivityWizard() {
             <Textarea
               id="ai-stance-input"
               label="موقف الذكاء الاصطناعي المحدد في المناظرة:"
-              placeholder="مثال: يطرح الذكاء الاصطناعي وجهة النظر القائلة بأن تغير المناخ ناتج عن دورات طبيعية لحث الطالب على إثبات العكس بالأدلة..."
+              placeholder="مثال: يطرح المرشد السقراطي وجهة نظر مضادة لحث الطالب على فحص الحجج وإثبات موقفه بالأدلة..."
               value={aiStance}
               onChange={(e) => setAiStance(e.target.value)}
               rows={3}
@@ -479,7 +478,7 @@ export function ActivityWizard() {
                       <Input
                         id={`source-title-${idx}`}
                         label="عنوان المصدر أو الجهة:"
-                        placeholder="مثال: تقرير الهيئة الحكومية الدولية (IPCC)"
+                        placeholder="مثال: التقرير العلمي المعتمد"
                         value={src.title}
                         onChange={(e) => {
                           const updated = [...sources];
@@ -492,7 +491,7 @@ export function ActivityWizard() {
                       <Input
                         id={`source-citation-${idx}`}
                         label="رمز التوثيق في الحوار:"
-                        placeholder="مثال: [تقرير IPCC]"
+                        placeholder="مثال: [المرجع 1]"
                         value={src.citation_label}
                         onChange={(e) => {
                           const updated = [...sources];

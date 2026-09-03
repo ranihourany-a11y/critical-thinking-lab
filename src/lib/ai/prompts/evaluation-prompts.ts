@@ -89,7 +89,7 @@ export function buildEvaluationSystemPrompt(params: {
 
   const rubricDescription = activity.rubric_config
     .map((crit, idx) => {
-      const levelsText = crit.levels
+      const levelsText = (crit.levels || [])
         .map((lvl) => `  - مستوى ${lvl.score}/4: ${lvl.descriptor}`)
         .join('\n');
       return `المعيار ${idx + 1}: ${crit.title} (الوزن: ${crit.weight}%)\nالوصف: ${crit.description}\nالمستويات:\n${levelsText}`;
