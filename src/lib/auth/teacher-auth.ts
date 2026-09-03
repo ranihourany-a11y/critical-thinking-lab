@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { storage } from '@/lib/db/storage';
+import { Teacher } from '@/lib/db/schema';
 import { createServerClient } from '@supabase/ssr';
 import { DEV_DEFAULT_TEACHER, TeacherUser } from './teacher-fixture';
 export { getSafeTeacherRedirect } from './teacher-redirect';
@@ -26,7 +27,9 @@ export async function getAuthenticatedTeacher(cookieStore?: {
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabaseAnonKey =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   // 2. Server-verified Supabase Identity via getUser() if configured
   if (supabaseUrl && supabaseAnonKey) {
@@ -53,9 +56,33 @@ export async function getAuthenticatedTeacher(cookieStore?: {
       } = await supabase.auth.getUser();
 
       if (!error && user && user.email) {
-        const authorizedTeacher =
+        let authorizedTeacher =
           (await storage.getTeacher(user.id)) ||
           (await storage.getTeacherByEmail(user.email));
+
+        if (!authorizedTeacher) {
+          try {
+            const { data: dbTeacher } = await supabase
+              .from('teachers')
+              .select('id, email, role, created_at, updated_at')
+              .eq('id', user.id)
+              .maybeSingle();
+
+            if (dbTeacher) {
+              const fullTeacher: Teacher = {
+                id: dbTeacher.id,
+                email: dbTeacher.email,
+                role: dbTeacher.role as 'teacher' | 'admin',
+                created_at: dbTeacher.created_at,
+                updated_at: dbTeacher.updated_at,
+              };
+              authorizedTeacher = fullTeacher;
+              await storage.upsertTeacher(fullTeacher);
+            }
+          } catch {
+            // Fall through
+          }
+        }
 
         if (!authorizedTeacher) {
           // Authenticated non-teachers are explicitly denied

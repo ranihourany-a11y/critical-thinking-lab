@@ -10,7 +10,9 @@ export async function GET(request: NextRequest) {
   const safeNext = getSafeTeacherRedirect(nextParam);
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabaseAnonKey =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
     return NextResponse.redirect(new URL('/teacher/login?error=service_unavailable', origin));
@@ -44,6 +46,29 @@ export async function GET(request: NextRequest) {
       } = await supabase.auth.getUser();
 
       if (user?.email) {
+        // 1. Verify against Supabase teachers table via authenticated session
+        try {
+          const { data: dbTeacher } = await supabase
+            .from('teachers')
+            .select('id, email, role, created_at, updated_at')
+            .eq('id', user.id)
+            .maybeSingle();
+
+          if (dbTeacher) {
+            await storage.upsertTeacher({
+              id: dbTeacher.id,
+              email: dbTeacher.email,
+              role: dbTeacher.role as 'teacher' | 'admin',
+              created_at: dbTeacher.created_at,
+              updated_at: dbTeacher.updated_at,
+            });
+            return response;
+          }
+        } catch {
+          // Fall through to memory / storage verification
+        }
+
+        // 2. Verify against in-memory storage fixtures
         const authorized =
           (await storage.getTeacher(user.id)) ||
           (await storage.getTeacherByEmail(user.email));

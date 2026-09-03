@@ -67,6 +67,11 @@ export const dbStore: DatabaseStore = globalForStore.ctlStore || (globalForStore
 
 export class StorageService {
   // Teacher operations
+  async upsertTeacher(teacher: Teacher): Promise<Teacher> {
+    dbStore.teachers.set(teacher.id, teacher);
+    return teacher;
+  }
+
   async getTeacher(id: string): Promise<Teacher | null> {
     return dbStore.teachers.get(id) || null;
   }

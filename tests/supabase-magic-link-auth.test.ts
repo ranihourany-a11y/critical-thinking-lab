@@ -114,5 +114,35 @@ describe('Supabase Magic Link & Teacher Authorization Flow', () => {
       expect(isSupabaseConfigured()).toBe(false);
       expect(createClient()).toBeNull();
     });
+
+    it('8. should authenticate teacher upserted from Supabase identity profile', async () => {
+      const customTeacher = {
+        id: '367c396f-c169-4cf0-a2db-c333f1829094',
+        email: 'ranihourany@gmail.com',
+        role: 'admin' as const,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      await storage.upsertTeacher(customTeacher);
+
+      const found = await storage.getTeacherByEmail('ranihourany@gmail.com');
+      expect(found).not.toBeNull();
+      expect(found?.email).toBe('ranihourany@gmail.com');
+      expect(found?.role).toBe('admin');
+
+      const sessionCookie = Buffer.from(
+        JSON.stringify({ id: customTeacher.id, email: customTeacher.email, role: customTeacher.role })
+      ).toString('base64');
+
+      const authTeacher = await getAuthenticatedTeacher({
+        get: (name) => (name === 'ctl_teacher_session' ? { value: sessionCookie } : undefined),
+      });
+
+      expect(authTeacher).not.toBeNull();
+      expect(authTeacher?.id).toBe(customTeacher.id);
+      expect(authTeacher?.email).toBe('ranihourany@gmail.com');
+      expect(authTeacher?.role).toBe('admin');
+    });
   });
 });
