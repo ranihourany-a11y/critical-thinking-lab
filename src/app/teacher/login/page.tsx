@@ -20,15 +20,19 @@ function TeacherLoginForm() {
   const [submitted, setSubmitted] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const isConfigured = isSupabaseConfigured();
+  const isConfigured = Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+      (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+  );
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return;
+    if (!email.trim() || isLoading) return;
 
     setErrorMessage(null);
 
-    if (!isSupabaseConfigured()) {
+    if (!isConfigured) {
       setErrorMessage('الخدمة غير متوفرة حالياً. يرجى المحاولة لاحقاً.');
       return;
     }
@@ -177,6 +181,7 @@ function TeacherLoginForm() {
             size="lg"
             className="w-full text-base font-bold shadow-md"
             isLoading={isLoading}
+            disabled={isLoading}
           >
             إرسال رابط الدخول الآمن (Magic Link) ✉️
           </Button>

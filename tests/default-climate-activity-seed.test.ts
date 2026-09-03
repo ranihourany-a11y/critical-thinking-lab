@@ -97,8 +97,8 @@ describe('Default Climate Critical-Thinking Activity Seed & Template', () => {
 
     // All rubric criteria must define scores 0 to 4
     for (const criterion of CLIMATE_CHANGE_RUBRIC) {
-      expect(criterion.levels.length).toBe(5);
-      const scores = criterion.levels.map((l) => l.score);
+      expect(criterion.levels?.length).toBe(5);
+      const scores = criterion.levels!.map((l) => l.score);
       expect(scores).toEqual([0, 1, 2, 3, 4]);
     }
   });

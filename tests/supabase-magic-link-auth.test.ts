@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { getAuthenticatedTeacher, getSafeTeacherRedirect, DEV_DEFAULT_TEACHER } from '../src/lib/auth/teacher-auth';
 import { storage } from '../src/lib/db/storage';
+import { isSupabaseConfigured, createClient } from '../src/lib/supabase/client';
 
 describe('Supabase Magic Link & Teacher Authorization Flow', () => {
   it('1. should recognize and authenticate an authorized teacher record', async () => {
@@ -65,5 +66,53 @@ describe('Supabase Magic Link & Teacher Authorization Flow', () => {
     expect(getSafeTeacherRedirect('/teacher/activities/new')).toBe('/teacher/activities/new');
     expect(getSafeTeacherRedirect('/teacher/activities/CLIM89')).toBe('/teacher/activities/CLIM89');
     expect(getSafeTeacherRedirect('/teacher/sessions/sess-1?tab=eval')).toBe('/teacher/sessions/sess-1?tab=eval');
+  });
+
+  describe('Supabase Client Configuration Boundaries', () => {
+    const originalEnv = { ...process.env };
+
+    afterEach(() => {
+      process.env = { ...originalEnv };
+    });
+
+    it('5. should support NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY when anon key is absent', () => {
+      delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example-project.supabase.co';
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = 'sb_pub_test_key_12345';
+
+      expect(isSupabaseConfigured()).toBe(true);
+      const client = createClient();
+      expect(client).not.toBeNull();
+    });
+
+    it('6. should fall back to NEXT_PUBLIC_SUPABASE_ANON_KEY when publishable key is absent', () => {
+      delete process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+      process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example-project.supabase.co';
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'sb_anon_test_key_67890';
+
+      expect(isSupabaseConfigured()).toBe(true);
+      const client = createClient();
+      expect(client).not.toBeNull();
+    });
+
+    it('7. should fail closed when configuration is missing', () => {
+      // Missing URL
+      delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'sb_anon_test_key_67890';
+      expect(isSupabaseConfigured()).toBe(false);
+      expect(createClient()).toBeNull();
+
+      // Missing both keys
+      process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example-project.supabase.co';
+      delete process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+      delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      expect(isSupabaseConfigured()).toBe(false);
+      expect(createClient()).toBeNull();
+
+      // Missing everything
+      delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+      expect(isSupabaseConfigured()).toBe(false);
+      expect(createClient()).toBeNull();
+    });
   });
 });
